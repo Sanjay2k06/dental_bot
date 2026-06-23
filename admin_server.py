@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -15,6 +15,21 @@ from storage import load_data, save_data, load_settings, save_settings
 from appointments import ALL_SLOTS, get_available_slots
 
 app = FastAPI()
+
+class LoginModel(BaseModel):
+    username: str
+    password: str
+
+def is_authenticated(request: Request):
+    token = request.cookies.get("session_token")
+    return token == "taeknibot_admin_session_val"
+
+def verify_admin(request: Request):
+    if not is_authenticated(request):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized access. Please log in."
+        )
 
 class SettingsModel(BaseModel):
     CLINIC_NAME: str
@@ -44,11 +59,11 @@ def startup_event():
     except Exception as e:
         print(f"Error starting background bot threads: {e}")
 
-@app.get("/api/appointments")
+@app.get("/api/appointments", dependencies=[Depends(verify_admin)])
 def get_appointments():
     return load_data()
 
-@app.post("/api/appointments/cancel/{booking_id}")
+@app.post("/api/appointments/cancel/{booking_id}", dependencies=[Depends(verify_admin)])
 def cancel_appt(booking_id: str):
     from appointments import cancel_booking
     
@@ -98,7 +113,7 @@ Booking ID:
                 
     return {"status": "success"}
 
-@app.get("/api/inquiries")
+@app.get("/api/inquiries", dependencies=[Depends(verify_admin)])
 def get_inquiries():
     try:
         with open("data/inquiries.json", "r") as f:
@@ -106,7 +121,7 @@ def get_inquiries():
     except:
         return []
 
-@app.get("/api/settings")
+@app.get("/api/settings", dependencies=[Depends(verify_admin)])
 def get_settings():
     merged = {}
     keys = [
@@ -120,14 +135,14 @@ def get_settings():
         merged[k] = file_settings.get(k) or os.getenv(k, "")
     return merged
 
-@app.post("/api/settings")
+@app.post("/api/settings", dependencies=[Depends(verify_admin)])
 def update_settings(settings: SettingsModel):
     save_settings(settings.dict())
     for k, v in settings.dict().items():
         os.environ[k] = v
     return {"status": "success"}
 
-@app.get("/api/slots")
+@app.get("/api/slots", dependencies=[Depends(verify_admin)])
 def get_slots(date: str):
     appointments = load_data()
     booked_map = {}
@@ -156,9 +171,28 @@ def get_slots(date: str):
             })
     return slots_status
 
+@app.post("/api/login")
+def login(data: LoginModel, response: Response):
+    if data.username == "taeknibot" and data.password == "taeknibot123":
+        response.set_cookie(
+            key="session_token",
+            value="taeknibot_admin_session_val",
+            httponly=True,
+            samesite="lax"
+        )
+        return {"status": "success"}
+    raise HTTPException(status_code=400, detail="Invalid username or password.")
+
+@app.post("/api/logout")
+def logout(response: Response):
+    response.delete_cookie("session_token")
+    return {"status": "success"}
+
 # Mount static folder
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
-def read_index():
-    return FileResponse("static/index.html")
+def read_index(request: Request):
+    if is_authenticated(request):
+        return FileResponse("private/index.html")
+    return FileResponse("static/login.html")

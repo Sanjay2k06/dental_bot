@@ -374,6 +374,25 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#039;');
     }
 
+    // Logout Button Handler
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to log out from the dashboard?')) {
+                try {
+                    const res = await fetch('/api/logout', { method: 'POST' });
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Logout failed.');
+                    }
+                } catch (err) {
+                    console.error('Error logging out:', err);
+                }
+            }
+        });
+    }
+
     // Initial Dashboard Data Load
     loadDashboardData();
 });

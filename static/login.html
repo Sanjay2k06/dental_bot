@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bright Smile Dental Care - Admin Login</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-page">
+    <div class="login-card">
+        <span class="login-logo">🦷</span>
+        <h2 class="login-title">Bright Smile Dental</h2>
+        <p class="login-subtitle">Clinic Receptionist Control Panel</p>
+        
+        <div id="error-msg" class="login-error-msg"></div>
+
+        <form id="login-form" class="login-form">
+            <div class="form-group">
+                <label for="username">Administrator Username</label>
+                <div class="login-input-wrapper">
+                    <input type="text" id="username" class="login-input" required autocomplete="username" placeholder="e.g. admin">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Security Password</label>
+                <div class="login-input-wrapper">
+                    <input type="password" id="password" class="login-input" required autocomplete="current-password" placeholder="••••••••">
+                </div>
+            </div>
+
+            <button type="submit" id="submit-btn" class="login-btn">Access Dashboard</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+            const submitBtn = document.getElementById('submit-btn');
+
+            errorMsg.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const data = await response.json();
+                    errorMsg.textContent = data.detail || 'Invalid username or password.';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Connection error. Please try again.';
+                errorMsg.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Access Dashboard';
+            }
+        });
+    </script>
+</body>
+</html>
