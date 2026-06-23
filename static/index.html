@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bright Smile Dental Care - Receptionist Dashboard</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <span class="brand-icon">🦷</span>
+                <div class="brand-text">
+                    <h1>Bright Smile</h1>
+                    <p>Dental Admin</p>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="overview">
+                    <span class="nav-icon">📊</span> Overview
+                </button>
+                <button class="nav-item" data-tab="appointments">
+                    <span class="nav-icon">📅</span> Appointments
+                </button>
+                <button class="nav-item" data-tab="slots">
+                    <span class="nav-icon">⏰</span> Slots Tracker
+                </button>
+                <button class="nav-item" data-tab="inquiries">
+                    <span class="nav-icon">💬</span> Telemetry & Inquiries
+                </button>
+                <button class="nav-item" data-tab="settings">
+                    <span class="nav-icon">⚙️</span> Settings
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p>Status: <span class="status-badge status-online">Bot Active</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h2 id="current-tab-title">Overview</h2>
+                    <p id="current-tab-desc">Welcome to the clinic management panel.</p>
+                </div>
+                <div class="header-profile">
+                    <div class="profile-info">
+                        <span class="profile-role">Clinic Receptionist</span>
+                        <span class="profile-name" id="clinic-name-header">Bright Smile Dental Care</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tab: Overview -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Booked</span>
+                            <span class="stat-icon">📋</span>
+                        </div>
+                        <div class="stat-value" id="stat-total-bookings">0</div>
+                        <div class="stat-footer">Cumulative clinic appointments</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Today's Bookings</span>
+                            <span class="stat-icon">📅</span>
+                        </div>
+                        <div class="stat-value" id="stat-today-bookings">0</div>
+                        <div class="stat-footer" id="stat-today-date">DD/MM/YYYY</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-title">Recent Inquiries</span>
+                            <span class="stat-icon">💬</span>
+                        </div>
+                        <div class="stat-value" id="stat-total-inquiries">0</div>
+                        <div class="stat-footer">Total user interactions logged</div>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="content-card recent-activity">
+                        <h3>Recent Bookings</h3>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>Mobile</th>
+                                        <th>Service</th>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-bookings-table">
+                                    <tr>
+                                        <td colspan="6" class="loading-text">Loading recent bookings...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Appointments -->
+            <section id="tab-appointments" class="tab-panel">
+                <div class="content-card">
+                    <div class="card-header-actions">
+                        <input type="text" id="appt-search" placeholder="Search patient name, phone, service or ID..." class="search-input">
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Patient Name</th>
+                                    <th>Mobile Phone</th>
+                                    <th>Service Requested</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Time Slot</th>
+                                    <th>Booking Reference</th>
+                                    <th style="text-align: center;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-bookings-table">
+                                <tr>
+                                    <td colspan="7" class="loading-text">Loading appointments database...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Slots Tracker -->
+            <section id="tab-slots" class="tab-panel">
+                <div class="slots-layout">
+                    <aside class="slots-selector">
+                        <div class="content-card">
+                            <h3>Select Date</h3>
+                            <p class="selector-desc">Choose a date to analyze slot availability.</p>
+                            <input type="date" id="slot-picker-date" class="date-picker-input">
+                        </div>
+                    </aside>
+                    <main class="slots-timeline-container">
+                        <div class="content-card">
+                            <h3 id="slots-view-title">Slots Status</h3>
+                            <div class="slots-grid" id="slots-grid-display">
+                                <!-- Slots populates here -->
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            </section>
+
+            <!-- Tab: Inquiries -->
+            <section id="tab-inquiries" class="tab-panel">
+                <div class="content-card">
+                    <p class="section-description">Shows real-time Telegram Bot inquiries, menu selections, and general chat inquiries.</p>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Telegram Chat ID</th>
+                                    <th>Inquiry Action</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inquiries-table">
+                                <tr>
+                                    <td colspan="4" class="loading-text">Loading inquiries log...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Settings -->
+            <section id="tab-settings" class="tab-panel">
+                <form id="settings-form" class="settings-form-layout">
+                    <!-- Clinic Information Card -->
+                    <div class="content-card settings-card">
+                        <h3>Clinic Information</h3>
+                        <p class="card-desc">Configure the details of the clinic displayed by the bot.</p>
+                        
+                        <div class="form-group">
+                            <label for="CLINIC_NAME">Clinic Name</label>
+                            <input type="text" id="CLINIC_NAME" name="CLINIC_NAME" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="CLINIC_ADDRESS">Address</label>
+                            <textarea id="CLINIC_ADDRESS" name="CLINIC_ADDRESS" rows="3" required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="CLINIC_LANDMARK">Landmark</label>
+                                <input type="text" id="CLINIC_LANDMARK" name="CLINIC_LANDMARK" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="CLINIC_GOOGLE_MAPS">Google Maps URL</label>
+                                <input type="url" id="CLINIC_GOOGLE_MAPS" name="CLINIC_GOOGLE_MAPS" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="CLINIC_CONTACT">Reception Contact</label>
+                                <input type="text" id="CLINIC_CONTACT" name="CLINIC_CONTACT" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="EMERGENCY_CONTACT">Emergency Helpline</label>
+                                <input type="text" id="EMERGENCY_CONTACT" name="EMERGENCY_CONTACT" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="CLINIC_EMAIL">Clinic Email</label>
+                                <input type="email" id="CLINIC_EMAIL" name="CLINIC_EMAIL" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="CLINIC_WEBSITE">Clinic Website</label>
+                                <input type="text" id="CLINIC_WEBSITE" name="CLINIC_WEBSITE" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Doctor & System Configuration -->
+                    <div class="content-card settings-card">
+                        <h3>Doctor Settings</h3>
+                        <p class="card-desc">Configure details about the treating doctor.</p>
+
+                        <div class="form-group">
+                            <label for="DOCTOR_NAME">Doctor Name</label>
+                            <input type="text" id="DOCTOR_NAME" name="DOCTOR_NAME" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="DOCTOR_QUAL">Qualifications</label>
+                                <input type="text" id="DOCTOR_QUAL" name="DOCTOR_QUAL" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="DOCTOR_EXP">Experience</label>
+                                <input type="text" id="DOCTOR_EXP" name="DOCTOR_EXP" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="DOCTOR_SPECIALTIES">Specializations (Comma-separated)</label>
+                            <textarea id="DOCTOR_SPECIALTIES" name="DOCTOR_SPECIALTIES" rows="2" required></textarea>
+                        </div>
+
+                        <h3 class="section-divider">System Configuration</h3>
+                        
+                        <div class="form-group">
+                            <label for="ADMIN_CHAT_ID">Telegram Admin Chat ID (Optional)</label>
+                            <input type="text" id="ADMIN_CHAT_ID" name="ADMIN_CHAT_ID" placeholder="e.g. 523456789">
+                            <small class="form-hint">Bookings are automatically forwarded to this Telegram ID.</small>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button type="submit" class="btn btn-primary" id="save-settings-btn">Save Configurations</button>
+                            <span id="settings-status-msg" class="status-msg"></span>
+                        </div>
+                    </div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
