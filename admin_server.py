@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import os
 import json
+import threading
 
 from storage import load_data, save_data, load_settings, save_settings
 from appointments import ALL_SLOTS, get_available_slots
@@ -24,6 +25,19 @@ class SettingsModel(BaseModel):
     DOCTOR_EXP: str
     DOCTOR_SPECIALTIES: str
     ADMIN_CHAT_ID: str
+
+@app.on_event("startup")
+def startup_event():
+    # Import main bot modules inside event to prevent circular dependency imports
+    try:
+        from main import poll_updates, reminder_scheduler_loop
+        print("Starting Telegram Bot polling loop in background thread...")
+        threading.Thread(target=poll_updates, daemon=True).start()
+        
+        print("Starting Reminders and Feedback scheduler loop in background thread...")
+        threading.Thread(target=reminder_scheduler_loop, daemon=True).start()
+    except Exception as e:
+        print(f"Error starting background bot threads: {e}")
 
 @app.get("/api/appointments")
 def get_appointments():
