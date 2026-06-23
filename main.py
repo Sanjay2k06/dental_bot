@@ -314,33 +314,6 @@ For assistance, contact:
             appointment["reminder_sent"] = True
             updated = True
             
-        # Feedback: 1 or more days after appointment
-        if (today - appt_date).days >= 1 and not appointment.get("feedback_collected"):
-            feedback_text = f"""Patient Feedback
-
-Thank you for visiting {clinic_name}.
-
-How would you rate your experience?
-
-1 Star
-2 Stars
-3 Stars
-4 Stars
-5 Stars
-
-Please share your feedback."""
-            FEEDBACK_KEYBOARD = {
-                "keyboard": [
-                    [{"text": "1 Star"}, {"text": "2 Stars"}, {"text": "3 Stars"}],
-                    [{"text": "4 Stars"}, {"text": "5 Stars"}]
-                ],
-                "resize_keyboard": True,
-                "one_time_keyboard": True
-            }
-            send_message(chat_id, feedback_text, reply_markup=FEEDBACK_KEYBOARD)
-            appointment["feedback_collected"] = True
-            updated = True
-            
     if updated:
         save_data(data)
 
@@ -434,13 +407,6 @@ def handle_text_message(chat_id, text, username):
         msg = "/start"
 
     clinic_name = get_setting("CLINIC_NAME", "Bright Smile Dental Care")
-
-    # Handle Feedback Rating Response
-    if "star" in msg.lower():
-        log_inquiry(chat_id, username, f"Submitted Feedback Rating: {msg}")
-        send_message(chat_id, "Thank you so much for your feedback! We are dedicated to providing the best care for your smile.", reply_markup=REMOVE_KEYBOARD)
-        time.sleep(1.5)
-        msg = "/start"
 
     # Start Session if /start or not existing
     if chat_id not in user_sessions or msg == "/start":
