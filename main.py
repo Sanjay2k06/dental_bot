@@ -6,14 +6,15 @@ import threading
 from datetime import datetime, timedelta, date
 import requests
 
-from storage import load_data, save_data, get_setting, log_inquiry
+from storage import load_data, save_data, get_setting, log_inquiry, get_ist_now
 from appointments import (
     ALL_SLOTS,
     get_available_slots,
     book_slot,
     find_booking_by_phone,
     cancel_booking,
-    update_booking
+    update_booking,
+    find_active_booking_by_chat_id
 )
 
 # Global session storage
@@ -88,7 +89,7 @@ REMOVE_KEYBOARD = {
 
 def get_next_5_dates():
     dates = []
-    current = datetime.now() + timedelta(days=2)
+    current = get_ist_now() + timedelta(days=2)
     while len(dates) < 5:
         if current.weekday() != 6: # Skip Sundays (closed)
             dates.append(current)
@@ -96,8 +97,8 @@ def get_next_5_dates():
     return dates
 
 def get_date_selection_keyboard():
-    today_str = datetime.now().strftime("%d/%m/%Y")
-    tomorrow_str = (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y")
+    today_str = get_ist_now().strftime("%d/%m/%Y")
+    tomorrow_str = (get_ist_now() + timedelta(days=1)).strftime("%d/%m/%Y")
     
     today_count = len(get_available_slots(today_str))
     tomorrow_count = len(get_available_slots(tomorrow_str))
@@ -273,7 +274,7 @@ def clean_phone_number(text):
 
 def check_reminders_and_feedback():
     data = load_data()
-    today = date.today()
+    today = get_ist_now().date()
     updated = False
     
     for appointment in data:
@@ -443,33 +444,150 @@ def handle_text_message(chat_id, text, username):
 
     # Start Session if /start or not existing
     if chat_id not in user_sessions or msg == "/start":
-        user_sessions[chat_id] = {
-            "step": "menu",
-            "book_data": {},
-            "reschedule_data": {},
-            "cancel_data": {}
-        }
-        
-        welcome_text = (
-            f"Welcome to {clinic_name}\n\n"
-            "\"Your Smile, Our Priority\"\n\n"
-            "How may we assist you today?\n\n"
-            "1. Book Appointment\n"
-            "2. Dental Services\n"
-            "3. Clinic Location\n"
-            "4. Contact Doctor\n"
-            "5. Working Hours\n"
-            "6. Frequently Asked Questions\n"
-            "7. Emergency Support\n"
-            "8. Reschedule Appointment\n"
-            "9. Cancel Appointment\n\n"
-            "Please select an option by replying with a number."
-        )
-        send_message(chat_id, welcome_text, reply_markup=MAIN_MENU_KEYBOARD)
-        return
+        bypass = False
+        if chat_id in user_sessions:
+            bypass = user_sessions[chat_id].get("bypass_active_check", False)
+            
+        active_booking = None
+        if not bypass:
+            active_booking = find_active_booking_by_chat_id(chat_id)
+            
+        if active_booking:
+            user_sessions[chat_id] = {
+                "step": "active_booking_menu",
+                "book_data": {},
+                "reschedule_data": {},
+                "cancel_data": {},
+                "active_booking": active_booking
+            }
+            
+            welcome_text = (
+                f"Welcome back to {clinic_name}!\n\n"
+                f"You have an active appointment booked with us:\n"
+                f"Date: {active_booking['date']}\n"
+                f"Time: {active_booking['time']}\n"
+                f"Service: {active_booking['service']}\n"
+                f"Reference: {active_booking['booking_id']}\n\n"
+                "How would you like to proceed?\n\n"
+                "1. Reschedule Appointment\n"
+                "2. Cancel Appointment\n"
+                "3. Restart (Return to Main Menu)"
+            )
+            
+            ACTIVE_BOOKING_KEYBOARD = {
+                "keyboard": [
+                    [{"text": "1. Reschedule Appointment"}],
+                    [{"text": "2. Cancel Appointment"}],
+                    [{"text": "3. Restart (Main Menu)"}]
+                ],
+                "resize_keyboard": True,
+                "one_time_keyboard": True
+            }
+            send_message(chat_id, welcome_text, reply_markup=ACTIVE_BOOKING_KEYBOARD)
+            return
+        else:
+            user_sessions[chat_id] = {
+                "step": "menu",
+                "book_data": {},
+                "reschedule_data": {},
+                "cancel_data": {}
+            }
+            
+            welcome_text = (
+                f"Welcome to {clinic_name}\n\n"
+                "\"Your Smile, Our Priority\"\n\n"
+                "How may we assist you today?\n\n"
+                "1. Book Appointment\n"
+                "2. Dental Services\n"
+                "3. Clinic Location\n"
+                "4. Contact Doctor\n"
+                "5. Working Hours\n"
+                "6. Frequently Asked Questions\n"
+                "7. Emergency Support\n"
+                "8. Reschedule Appointment\n"
+                "9. Cancel Appointment\n\n"
+                "Please select an option by replying with a number."
+            )
+            send_message(chat_id, welcome_text, reply_markup=MAIN_MENU_KEYBOARD)
+            return
 
     session = user_sessions[chat_id]
     step = session["step"]
+
+    # --- ACTIVE BOOKING MENU STEP ---
+    if step == "active_booking_menu":
+        msg_clean = msg.strip().lower()
+        if "reschedule" in msg_clean or "1" in msg_clean:
+            log_inquiry(chat_id, username, "Initiated Reschedule Flow (from Active Menu)")
+            session["step"] = "reschedule_select"
+            session["reschedule_data"] = {
+                "phone": session["active_booking"]["phone"],
+                "booking": session["active_booking"]
+            }
+            
+            appt_info = (
+                "I found your appointment:\n\n"
+                f"Patient: {session['active_booking']['name']}\n"
+                f"Service: {session['active_booking']['service']}\n"
+                f"Date: {session['active_booking']['date']}\n"
+                f"Time: {session['active_booking']['time']}\n\n"
+                "What would you like to change?"
+            )
+            send_message(chat_id, appt_info, reply_markup=RESCHEDULE_OPTIONS_KEYBOARD)
+            
+        elif "cancel" in msg_clean or "2" in msg_clean:
+            log_inquiry(chat_id, username, "Initiated Cancel Flow (from Active Menu)")
+            session["step"] = "cancel_confirm"
+            session["cancel_data"] = {
+                "booking": session["active_booking"]
+            }
+            
+            appt_info = (
+                "I found your appointment:\n\n"
+                f"Patient: {session['active_booking']['name']}\n"
+                f"Service: {session['active_booking']['service']}\n"
+                f"Date: {session['active_booking']['date']}\n"
+                f"Time: {session['active_booking']['time']}\n\n"
+                "Are you sure you want to cancel this appointment?"
+            )
+            send_message(chat_id, appt_info, reply_markup=YES_NO_KEYBOARD)
+            
+        elif "restart" in msg_clean or "3" in msg_clean:
+            user_sessions[chat_id] = {
+                "step": "menu",
+                "book_data": {},
+                "reschedule_data": {},
+                "cancel_data": {},
+                "bypass_active_check": True
+            }
+            welcome_text = (
+                f"Welcome to {clinic_name}\n\n"
+                "\"Your Smile, Our Priority\"\n\n"
+                "How may we assist you today?\n\n"
+                "1. Book Appointment\n"
+                "2. Dental Services\n"
+                "3. Clinic Location\n"
+                "4. Contact Doctor\n"
+                "5. Working Hours\n"
+                "6. Frequently Asked Questions\n"
+                "7. Emergency Support\n"
+                "8. Reschedule Appointment\n"
+                "9. Cancel Appointment\n\n"
+                "Please select an option by replying with a number."
+            )
+            send_message(chat_id, welcome_text, reply_markup=MAIN_MENU_KEYBOARD)
+        else:
+            ACTIVE_BOOKING_KEYBOARD = {
+                "keyboard": [
+                    [{"text": "1. Reschedule Appointment"}],
+                    [{"text": "2. Cancel Appointment"}],
+                    [{"text": "3. Restart (Main Menu)"}]
+                ],
+                "resize_keyboard": True,
+                "one_time_keyboard": True
+            }
+            send_message(chat_id, "Please select a valid option from the menu:", reply_markup=ACTIVE_BOOKING_KEYBOARD)
+        return
 
     # --- MENU STEP ---
     if step == "menu":
@@ -661,9 +779,9 @@ def handle_text_message(chat_id, text, username):
         selected_date = None
         
         if "1" in msg or msg.lower() == "today":
-            selected_date = datetime.now().strftime("%d/%m/%Y")
+            selected_date = get_ist_now().strftime("%d/%m/%Y")
         elif "2" in msg or msg.lower() == "tomorrow":
-            selected_date = (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y")
+            selected_date = (get_ist_now() + timedelta(days=1)).strftime("%d/%m/%Y")
         elif "3" in msg or msg.lower() == "select another date":
             send_message(chat_id, "Please select a date from the options below:", reply_markup=get_date_keyboard())
             return
@@ -892,9 +1010,9 @@ We look forward to seeing you."""
     if step == "reschedule_date":
         selected_date = None
         if "1" in msg or msg.lower() == "today":
-            selected_date = datetime.now().strftime("%d/%m/%Y")
+            selected_date = get_ist_now().strftime("%d/%m/%Y")
         elif "2" in msg or msg.lower() == "tomorrow":
-            selected_date = (datetime.now() + timedelta(days=1)).strftime("%d/%m/%Y")
+            selected_date = (get_ist_now() + timedelta(days=1)).strftime("%d/%m/%Y")
         elif "3" in msg or msg.lower() == "select another date":
             send_message(chat_id, "Please select a date from the options below:", reply_markup=get_date_keyboard())
             return

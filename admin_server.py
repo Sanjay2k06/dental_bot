@@ -5,6 +5,11 @@ from pydantic import BaseModel
 import os
 import json
 import threading
+import mimetypes
+
+mimetypes.init()
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("application/javascript", ".js")
 
 from storage import load_data, save_data, load_settings, save_settings
 from appointments import ALL_SLOTS, get_available_slots

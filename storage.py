@@ -1,10 +1,13 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 FILE_PATH = "data/appointments.json"
 SETTINGS_FILE = "data/settings.json"
 INQUIRIES_FILE = "data/inquiries.json"
+
+def get_ist_now():
+    return datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
 
 def load_data():
     try:
@@ -50,7 +53,7 @@ def log_inquiry(chat_id, username, action):
             "chat_id": chat_id,
             "username": username,
             "action": action,
-            "timestamp": datetime.now().strftime("%d/%m/%Y %I:%M %p")
+            "timestamp": get_ist_now().strftime("%d/%m/%Y %I:%M %p")
         })
         
         # Keep last 500 inquiries

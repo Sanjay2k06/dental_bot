@@ -1,5 +1,5 @@
 import random
-from storage import load_data, save_data
+from storage import load_data, save_data, get_ist_now
 
 ALL_SLOTS = [
     "09:00 AM",
@@ -32,7 +32,25 @@ def get_available_slots(date_str):
             
     return available
 
+def find_active_booking_by_chat_id(chat_id):
+    from datetime import datetime
+    today = get_ist_now().date()
+    data = load_data()
+    for appointment in reversed(data):
+        if appointment.get("telegram_chat_id") == chat_id:
+            appt_date_str = appointment.get("date")
+            if not appt_date_str:
+                continue
+            try:
+                appt_date = datetime.strptime(appt_date_str, "%d/%m/%Y").date()
+                if appt_date >= today:
+                    return appointment
+            except:
+                continue
+    return None
+
 def book_slot(name, phone, service, date_str, slot_time, telegram_chat_id):
+    from datetime import datetime
     data = load_data()
     
     # Double check if slot is already booked on this date
@@ -48,6 +66,17 @@ def book_slot(name, phone, service, date_str, slot_time, telegram_chat_id):
         if booking_id not in existing_ids:
             break
             
+    # Determine initial reminder_sent status
+    # If appointment is for Today or Tomorrow, mark reminder_sent as True to prevent immediate spam
+    reminder_sent = False
+    try:
+        today = get_ist_now().date()
+        appt_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+        if (appt_date - today).days <= 1:
+            reminder_sent = True
+    except Exception as e:
+        print(f"Error calculating reminder status during booking: {e}")
+        
     new_booking = {
         "booking_id": booking_id,
         "name": name,
@@ -55,7 +84,9 @@ def book_slot(name, phone, service, date_str, slot_time, telegram_chat_id):
         "service": service,
         "date": date_str,
         "time": slot_time,
-        "telegram_chat_id": telegram_chat_id
+        "telegram_chat_id": telegram_chat_id,
+        "reminder_sent": reminder_sent,
+        "feedback_collected": False
     }
     
     data.append(new_booking)
@@ -84,6 +115,7 @@ def cancel_booking(booking_id):
     return False
 
 def update_booking(booking_id, new_date=None, new_time=None):
+    from datetime import datetime
     data = load_data()
     updated_appt = None
     
@@ -93,6 +125,21 @@ def update_booking(booking_id, new_date=None, new_time=None):
                 appointment["date"] = new_date
             if new_time:
                 appointment["time"] = new_time
+                
+            # Reset reminder_sent based on new date
+            date_str = appointment.get("date")
+            reminder_sent = False
+            try:
+                today = get_ist_now().date()
+                appt_date = datetime.strptime(date_str, "%d/%m/%Y").date()
+                if (appt_date - today).days <= 1:
+                    reminder_sent = True
+            except Exception as e:
+                print(f"Error calculating reminder status during reschedule: {e}")
+            
+            appointment["reminder_sent"] = reminder_sent
+            appointment["feedback_collected"] = False
+            
             updated_appt = appointment
             break
             
